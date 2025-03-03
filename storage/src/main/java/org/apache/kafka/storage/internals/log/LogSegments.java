@@ -38,7 +38,9 @@ import java.util.stream.Collectors;
 public class LogSegments implements Closeable {
 
     private final TopicPartition topicPartition;
-    /* the segments of the log with key being LogSegment base offset and value being a LogSegment */
+    /* the segments of the log with key being LogSegment base offset and value being a LogSegment
+     * Map 的 Key 值是日志段的起始位移值，Value 则是日志段对象本身
+     */
     private final ConcurrentNavigableMap<Long, LogSegment> segments = new ConcurrentSkipListMap<>();
 
     /**

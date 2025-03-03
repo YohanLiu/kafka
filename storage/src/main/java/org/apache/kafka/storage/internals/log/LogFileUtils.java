@@ -23,11 +23,13 @@ public final class LogFileUtils {
 
     /**
      * Suffix of a producer snapshot file
+     * 是 Kafka 为幂等型或事务型 Producer 所做的快照文件
      */
     public static final String PRODUCER_SNAPSHOT_FILE_SUFFIX = ".snapshot";
 
     /**
      * Suffix for a file that is scheduled to be deleted
+     * 是删除日志段操作创建的文件
      */
     public static final String DELETED_FILE_SUFFIX = ".deleted";
 
@@ -57,10 +59,14 @@ public final class LogFileUtils {
     /** Suffix of a temporary file used when swapping files into the log */
     public static final String SWAP_FILE_SUFFIX = ".swap";
 
-    /** Suffix of a directory that is scheduled to be deleted */
+    /** Suffix of a directory that is scheduled to be deleted
+     * 应用于文件夹的。当你删除一个主题的时候，主题的分区文件夹会被加上这个后缀。
+     */
     public static final String DELETE_DIR_SUFFIX = "-delete";
 
-    /** Suffix of a directory that is used for future partition */
+    /** Suffix of a directory that is used for future partition
+     * 是用于变更主题分区文件夹地址的，属于比较高阶的用法
+     */
     public static final String FUTURE_DIR_SUFFIX = "-future";
 
     /** Suffix of a directory that is used for stray partition */

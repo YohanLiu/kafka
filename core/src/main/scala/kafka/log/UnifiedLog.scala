@@ -61,7 +61,7 @@ import scala.jdk.OptionConverters.{RichOption, RichOptional, RichOptionalInt}
  * NOTE: this class handles state and behavior specific to tiered segments as well as any behavior combining both tiered
  * and local segments. The state and behavior specific to local segments are handled by the encapsulated LocalLog instance.
  *
- * @param logStartOffset The earliest offset allowed to be exposed to kafka client.
+ * @param logStartOffset The earliest offset allowed to be exposed to kafka client.表示日志的当前最早位移
  *                       The logStartOffset can be updated by :
  *                       - user's DeleteRecordsRequest
  *                       - broker's log retention
@@ -123,6 +123,7 @@ class UnifiedLog(@volatile var logStartOffset: Long,
    * not eligible for deletion. This means that the active segment is only eligible for deletion if the high watermark
    * equals the log end offset (which may never happen for a partition under consistent load). This is needed to
    * prevent the log start offset (which is exposed in fetch responses) from getting ahead of the high watermark.
+   * 封装了下一条待插入消息的位移值
    */
   @volatile private var highWatermarkMetadata: LogOffsetMetadata = new LogOffsetMetadata(logStartOffset)
 
@@ -1893,6 +1894,7 @@ object UnifiedLog extends Logging {
             remoteStorageSystemEnable: Boolean = false,
             logOffsetsListener: LogOffsetsListener = LogOffsetsListener.NO_OP_OFFSETS_LISTENER): UnifiedLog = {
     // create the log directory if it doesn't exist
+    // 创建分区日志路径
     Files.createDirectories(dir.toPath)
     val topicPartition = JUnifiedLog.parseTopicPartitionName(dir)
     val segments = new LogSegments(topicPartition)

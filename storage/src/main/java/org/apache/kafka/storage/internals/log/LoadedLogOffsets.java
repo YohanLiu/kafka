@@ -21,6 +21,7 @@ import java.util.Objects;
 public class LoadedLogOffsets {
     public final long logStartOffset;
     public final long recoveryPoint;
+    // 封装了下一条待插入消息的位移值
     public final LogOffsetMetadata nextOffsetMetadata;
 
     public LoadedLogOffsets(final long logStartOffset,

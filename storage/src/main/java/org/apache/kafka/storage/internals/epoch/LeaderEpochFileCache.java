@@ -50,6 +50,7 @@ import static org.apache.kafka.common.requests.OffsetsForLeaderEpochResponse.UND
  * Note that {@link #truncateFromStartAsyncFlush},{@link #truncateFromEndAsyncFlush} flush the epoch-entry changes to checkpoint asynchronously.
  * Hence, it is instantiater's responsibility to ensure restoring the cache to the correct state after instantiating
  * this class from checkpoint (which might contain stale epoch entries right after instantiation).
+ * 保存了分区 Leader 的 Epoch 值与对应位移值的映射关系
  */
 public final class LeaderEpochFileCache {
     private final TopicPartition topicPartition;

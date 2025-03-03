@@ -79,6 +79,7 @@ public class LocalLog {
     // Last time the log was flushed
     private final AtomicLong lastFlushedTime;
     private final String logIdent;
+    // 保存了分区日志下所有的日志段信息
     private final LogSegments segments;
     private final Scheduler scheduler;
     private final Time time;
@@ -94,6 +95,7 @@ public class LocalLog {
     private volatile String parentDir;
     private volatile LogConfig config;
     private volatile long recoveryPoint;
+    // dir 就是这个日志所在的文件夹路径，也就是主题分区的路径
     private File dir;
 
     /**
