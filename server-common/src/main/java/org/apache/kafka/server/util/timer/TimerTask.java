@@ -17,14 +17,19 @@
 package org.apache.kafka.server.util.timer;
 
 public abstract class TimerTask implements Runnable {
+    // 每个TimerTask实例关联一个TimerTaskEntry
+    // 就是说每个定时任务需要知道它在哪个Bucket链表下的哪个链表元素上
     private volatile TimerTaskEntry timerTaskEntry;
+
     // timestamp in millisecond
+    // 通常是request.timeout.ms参数值
     public final long delayMs;
 
     public TimerTask(long delayMs) {
         this.delayMs = delayMs;
     }
 
+    // 取消定时任务，原理就是将关联的timerTaskEntry置空
     public void cancel() {
         synchronized (this) {
             if (timerTaskEntry != null) timerTaskEntry.remove();
@@ -36,6 +41,7 @@ public abstract class TimerTask implements Runnable {
         return timerTaskEntry == null;
     }
 
+    // 关联timerTaskEntry，原理是给timerTaskEntry字段赋值
     final void setTimerTaskEntry(TimerTaskEntry entry) {
         synchronized (this) {
             // if this timerTask is already held by an existing timer task entry,
@@ -48,6 +54,7 @@ public abstract class TimerTask implements Runnable {
         }
     }
 
+    // 获取关联的timerTaskEntry实例
     TimerTaskEntry getTimerTaskEntry() {
         return timerTaskEntry;
     }

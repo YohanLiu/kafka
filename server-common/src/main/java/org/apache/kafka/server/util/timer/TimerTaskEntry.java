@@ -17,12 +17,20 @@
 package org.apache.kafka.server.util.timer;
 
 public final class TimerTaskEntry {
+    // 指定定时任务
     public final TimerTask timerTask;
+    // 定时任务的过期时间
     public final long expirationMs;
+    // 绑定的Bucket链表实例
+    // Kafka 的延时请求可能会被其他线程从一个链表搬移到另一个链表中，
+    // 因此，为了保证必要的内存可见性，代码声明 list 为 volatile
     volatile TimerTaskList list;
+    // next指针
     TimerTaskEntry next;
+    // prev指针
     TimerTaskEntry prev;
 
+    // 关联给定的定时任务
     public TimerTaskEntry(
         TimerTask timerTask,
         long expirationMs
@@ -37,10 +45,12 @@ public final class TimerTaskEntry {
         }
     }
 
+    // 关联定时任务是否已经被取消了
     public boolean cancelled() {
         return timerTask.getTimerTaskEntry() != this;
     }
 
+    // 从Bucket链表中移除自己
     public void remove() {
         TimerTaskList currentList = list;
         // If remove is called when another thread is moving the entry from a task entry list to another,
