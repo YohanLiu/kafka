@@ -48,11 +48,21 @@ public class DelayedOperationPurgatory<T extends DelayedOperation> {
     private final AtomicInteger estimatedTotalOperations = new AtomicInteger(0);
     /* background thread expiring operations that have timed out */
     private final ExpiredOperationReaper expirationReaper = new ExpiredOperationReaper();
+    // 这个 Purgatory 的名字
     private final String purgatoryName;
+    /**
+     * @see SystemTimer
+     */
     private final Timer timeoutTimer;
+    // Broker 的序号
     private final int brokerId;
+    // 用于控制删除线程移除 Bucket 中的过期延迟请求的频率，在绝大部分情况下，都是 1 秒一次。
+    // 当然，对于生产者、消费者以及删除消息的 AdminClient 而言，Kafka 分别定义了专属的参数允许你调整这个频率。
+    // 比如，生产者参数 producer.purgatory.purge.interval.requests，就是做这个用的
     private final int purgeInterval;
+    // 是否启动删除线程
     private final boolean reaperEnabled;
+    // 是否启用分层时间轮
     private final boolean timerEnabled;
 
     public DelayedOperationPurgatory(String purgatoryName, Timer timer, int brokerId, boolean reaperEnabled) {
@@ -101,6 +111,7 @@ public class DelayedOperationPurgatory<T extends DelayedOperation> {
     }
 
     /**
+     * 检查操作是否能够完成，如果不能的话，就把它加入到对应 Key 所在的 WatcherList 中
      * Check if the operation can be completed, if not watch it based on the given watch keys
      * <br/>
      * Note that a delayed operation can be watched on multiple keys. It is possible that
@@ -146,23 +157,31 @@ public class DelayedOperationPurgatory<T extends DelayedOperation> {
         // To avoid the above scenario, we recommend DelayedOperationPurgatory.checkAndComplete() be called without holding
         // any exclusive lock. Since DelayedOperationPurgatory.checkAndComplete() completes delayed operations asynchronously,
         // holding an exclusive lock to make the call is often unnecessary.
+        // 使用 safeTryCompleteOrElse 方法尝试完成操作。如果操作未完成，则执行 lambda 表达式中的逻辑。
         if (operation.safeTryCompleteOrElse(() -> {
+            // 遍历所有要监控的Key
             watchKeys.forEach(key -> {
+                // 如果延迟操作尚未完成
                 if (!operation.isCompleted())
+                    // 将该operation加入到Key所在的WatcherList
                     watchForOperation(key, operation);
             });
             if (!watchKeys.isEmpty())
+                // 更新Purgatory中总请求数
                 estimatedTotalOperations.incrementAndGet();
         })) {
             return true;
         }
 
         // if it cannot be completed by now and hence is watched, add to the timeout queue also
+        // 如果操作当前仍未完成，并且启用了定时器功能
         if (!operation.isCompleted()) {
             if (timerEnabled)
+                // 将操作添加到超时队列中
                 timeoutTimer.add(operation);
+            // 再次检查操作是否已完成（可能在添加到超时队列后完成）
             if (operation.isCompleted()) {
-                // cancel the timer task
+                // 如果操作已完成，取消定时器任务
                 operation.cancel();
             }
         }
@@ -170,20 +189,24 @@ public class DelayedOperationPurgatory<T extends DelayedOperation> {
     }
 
     /**
+     * 检查给定 Key 所在的 WatcherList 中的延迟请求是否满足完成条件，如果是的话，则结束掉它们
      * Check if some delayed operations can be completed with the given watch key,
      * and if yes complete them.
      *
      * @return the number of completed operations during this process
      */
     public <K extends DelayedOperationKey> int checkAndComplete(K key) {
+        // 获取给定Key的WatcherList
         WatcherList wl = watcherList(key);
         Watchers watchers;
         wl.watchersLock.lock();
         try {
+            // 获取WatcherList中Key对应的Watchers对象实例
             watchers = wl.watchersByKey.get(key);
         } finally {
             wl.watchersLock.unlock();
         }
+        // 尝试完成满足完成条件的延迟请求并返回成功完成的请求数
         int numCompleted = watchers == null ? 0 : watchers.tryCompleteWatched();
 
         if (numCompleted > 0) {
@@ -284,11 +307,13 @@ public class DelayedOperationPurgatory<T extends DelayedOperation> {
      * A list of operation watching keys
      */
     private class WatcherList {
+        // 定义一组按照Key分组的Watchers对象
         private final ConcurrentHashMap<DelayedOperationKey, Watchers> watchersByKey = new ConcurrentHashMap<>();
 
         private final ReentrantLock watchersLock = new ReentrantLock();
 
         /*
+         * 返回所有Watchers对象
          * Return all the current watcher lists,
          * note that the returned watchers may be removed from the list by other threads
          */
@@ -298,6 +323,7 @@ public class DelayedOperationPurgatory<T extends DelayedOperation> {
     }
 
     /**
+     * Watchers 是基于 Key 的一个延迟请求的监控链表.Kafka 利用它来监控保存其中的延迟请求的可完成状态。
      * A linked list of watched delayed operations based on some key
      */
     private class Watchers {

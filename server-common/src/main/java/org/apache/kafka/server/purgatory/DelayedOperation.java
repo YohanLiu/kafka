@@ -41,6 +41,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public abstract class DelayedOperation extends TimerTask {
 
+    // 标识该延迟操作是否已经完成
     private final AtomicBoolean completed = new AtomicBoolean(false);
 
     protected final Lock lock;
@@ -59,6 +60,7 @@ public abstract class DelayedOperation extends TimerTask {
     }
 
     /*
+     * 强制完成延迟操作，不管它是否满足完成条件。每当操作满足完成条件或已经过期了，就需要调用该方法完成该操作
      * Force completing the delayed operation, if not already completed.
      * This function can be triggered when
      *
@@ -82,6 +84,7 @@ public abstract class DelayedOperation extends TimerTask {
     }
 
     /**
+     * 检查延迟操作是否已经完成。源码使用这个方法来决定后续如何处理该操作。比如如果操作已经完成了，那么通常需要取消该操作
      * Check if the delayed operation is already completed
      */
     public boolean isCompleted() {
@@ -89,17 +92,20 @@ public abstract class DelayedOperation extends TimerTask {
     }
 
     /**
+     * 强制完成之后执行的过期逻辑回调方法。只有真正完成操作的那个线程才有资格调用这个方法
      * Call-back to execute when a delayed operation gets expired and hence forced to complete.
      */
     public abstract void onExpiration();
 
     /**
+     * 完成延迟操作所需的处理逻辑。这个方法只会在 forceComplete 方法中被调用
      * Process for completing an operation; This function needs to be defined
      * in subclasses and will be called exactly once in forceComplete()
      */
     public abstract void onComplete();
 
     /**
+     * 尝试完成延迟操作的顶层方法，内部会调用 forceComplete 方法
      * Try to complete the delayed operation by first checking if the operation
      * can be completed by now. If yes execute the completion logic by calling
      * forceComplete() and return true iff forceComplete returns true; otherwise return false
@@ -118,6 +124,7 @@ public abstract class DelayedOperation extends TimerTask {
         try {
             if (tryComplete()) return true;
             else {
+                // 额外逻辑
                 action.apply();
                 // last completion check
                 return tryComplete();
@@ -141,6 +148,7 @@ public abstract class DelayedOperation extends TimerTask {
     }
 
     /**
+     * 调用延迟操作超时后的过期逻辑，也就是组合调用 forceComplete + onExpiration
      * run() method defines a task that is executed on timeout
      */
     @Override
